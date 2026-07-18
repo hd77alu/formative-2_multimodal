@@ -6,17 +6,18 @@ and, once access is granted, recommends a product category from the merged custo
 ## Project structure
 
 ```
-├── app.py                          # The demo app (run this!)
+├── app.py                          # The demo app
 ├── requirements.txt
 ├── dataset/
 │   ├── merged_customer_data.csv    # Merged transactions + social profiles
 │   ├── image_features.csv          # HOG features extracted from raw images
 │   └── audio_features.csv          # MFCC/spectral features from voice clips
 ├── models/
-│   ├── facial_recognition_model.joblib   # XGBoost identity classifier (HOG features)
+│   ├── facial_recognition_bundle.joblib   # XGBoost identity classifier Model Bundles
+│   ├── facial_recognition_model.json      # XGBoost identity classifier (HOG features)
 │   ├── voiceprint_model.joblib           # RandomForest speaker verifier (MFCC features)
-│   ├── final_product_rec_model.joblib    # XGBoost product recommender
-│   └── label_encoder.pkl
+│   ├── final_product_rec_model.json    # XGBoost product recommender
+│   ├── final_product_rec_bundle.joblib    # XGBoost product recommender
 ├── notebooks/                      # Training notebooks for all three models
 └── raw images/                     # Face images for the 4 registered users
 ```
@@ -48,11 +49,3 @@ The app will:
    the claimed identity. If either fails, access is denied.
 5. **On success** — the app opens `merged_customer_data.csv`, pulls that customer's
    records, and runs the product recommendation model to suggest a product category.
-
-## Demo scenarios to try
-
-| Scenario | Input | Expected result |
-|---|---|---|
-| Legitimate user | `arsene` + Enter + Enter | ACCESS GRANTED + recommendation |
-| Impostor voice | `arsene` + Enter + `csv:loic:approve` | ACCESS DENIED |
-| Wrong face | `arsene` + `raw images/loic_neutral.jpeg` + Enter | ACCESS DENIED |

@@ -2,12 +2,15 @@ import os
 import warnings
 
 warnings.filterwarnings("ignore")
+os.environ["OPENCV_LOG_LEVEL"] = "OFF"
 
 import cv2
 import joblib
 import numpy as np
 import pandas as pd
 from skimage.feature import hog
+from xgboost import XGBClassifier
+
 
 # Registered users: name -> customer ID + face image
 USERS = {
@@ -17,9 +20,9 @@ USERS = {
     "principie": {"customer_id": 187, "image": "raw images/principie_neutral.jpg"},
 }
 
-FACE_MODEL_PATH = "models/facial_recognition_model.joblib"
+FACE_MODEL_PATH = "models/facial_recognition_model.json"
 VOICE_MODEL_PATH = "models/voiceprint_model.joblib"
-REC_MODEL_PATH = "models/final_product_rec_model.joblib"
+REC_MODEL_PATH = "models/final_product_rec_model.json"
 MERGED_DATA_PATH = "dataset/merged_customer_data.csv"
 AUDIO_FEATURES_PATH = "dataset/audio_features.csv"
 
@@ -130,17 +133,31 @@ def recommend_product(customer_id, rec_bundle):
     print(f"\n  Customer profile ({len(customer)} records found):")
     print(f"    Past purchases: {', '.join(customer['product_category'].unique())}")
     print(f"    Average rating given: {customer['customer_rating'].mean():.1f}")
-    print(f"\n  >>> RECOMMENDED PRODUCT CATEGORY: {top_category} <<<")
+    print(f"\n  >>> RECOMMENDED PRODUCT: {top_category} <<<")
 
-
+# MAIN APP EXECUTION BLOCK
 def main():
     print("=" * 60)
     print("   MULTI-MODAL BIOMETRIC AUTHENTICATION SYSTEM")
     print("=" * 60)
 
-    face_bundle = joblib.load(FACE_MODEL_PATH)
+    # Load Face model
+    face_model = XGBClassifier()
+    face_model.load_model(FACE_MODEL_PATH)
+    # Load the extras (encoder, threshold)
+    face_bundle = joblib.load("models/facial_recognition_bundle.joblib")
+    # Attach the model into the bundle for consistency
+    face_bundle["model"] = face_model
+
+    # Load Voice model
     voice_bundle = joblib.load(VOICE_MODEL_PATH)
-    rec_bundle = joblib.load(REC_MODEL_PATH)
+
+    # Load recommender model from JSON
+    rec_model = XGBClassifier()
+    rec_model.load_model(REC_MODEL_PATH)
+    # Load extras
+    rec_bundle = joblib.load("models/final_product_rec_bundle.joblib")
+    rec_bundle["model"] = rec_model
 
     print(f"\nRegistered users: {', '.join(USERS.keys())}")
     claimed_name = input("\nWho are you? Enter your name: ").strip().lower()
@@ -151,27 +168,34 @@ def main():
 
     print("\n[STEP 1/2] FACE VERIFICATION")
     default_img = USERS[claimed_name]["image"]
-    image_path = input(f"  Image path (Enter = {default_img}): ").strip() or default_img
+    image_path = input(f"   Image path (Enter = {default_img}): ").strip() or default_img
     face_ok = verify_face(image_path, claimed_name, face_bundle)
-    print(f"  Face check: {'PASSED' if face_ok else 'FAILED'}")
+    print(f"   Face check: {'PASSED' if face_ok else 'FAILED'}")
+
+    # EARLY EXIT LOGIC: Terminate immediately if face verification fails
+    if not face_ok:
+        print("\n" + "=" * 60)
+        print("[X] ACCESS DENIED - face verification failed.")
+        print("=" * 60)
+        return
 
     print("\n[STEP 2/2] VOICE VERIFICATION")
-    print("  Enter a .wav path, or 'csv:<speaker>:<phrase>' to use a")
-    print("  saved sample from audio_features.csv (e.g. csv:arsene:approve)")
+    print("   Enter a .wav path, or 'csv:<speaker>:<phrase>' to use a")
+    print("   saved sample from audio_features.csv (e.g. csv:arsene:approve)")
     default_audio = f"csv:{claimed_name}:approve"
-    audio_input = input(f"  Audio (Enter = {default_audio}): ").strip() or default_audio
+    audio_input = input(f"   Audio (Enter = {default_audio}): ").strip() or default_audio
     voice_ok = verify_voice(audio_input, claimed_name, voice_bundle)
-    print(f"  Voice check: {'PASSED' if voice_ok else 'FAILED'}")
+    print(f"   Voice check: {'PASSED' if voice_ok else 'FAILED'}")
 
     print("\n" + "=" * 60)
-    if face_ok and voice_ok:
+    if voice_ok:  # No need to check face_ok here since it's pre-validated
         customer_id = USERS[claimed_name]["customer_id"]
         print(f"[OK] ACCESS GRANTED - welcome {claimed_name.capitalize()} (customer {customer_id})")
         print("=" * 60)
         print("\nGenerating your product recommendation...")
         recommend_product(customer_id, rec_bundle)
     else:
-        print("[X] ACCESS DENIED - both face AND voice must match.")
+        print("[X] ACCESS DENIED - voice verification failed.")
         print("=" * 60)
 
 
