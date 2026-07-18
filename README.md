@@ -1,7 +1,7 @@
 # Formative 2 — Multi-Modal Biometric Authentication & Product Recommendation
 
 A demo system that authenticates a user with **two biometric modalities** (face + voice)
-and, once access is granted, recommends a product category from the merged customer database.
+and, once access is granted, recommends a product category from the customer database.
 
 ## Project structure
 
@@ -17,7 +17,7 @@ and, once access is granted, recommends a product category from the merged custo
 │   ├── facial_recognition_model.json      # XGBoost identity classifier (HOG features)
 │   ├── voiceprint_model.joblib           # RandomForest speaker verifier (MFCC features)
 │   ├── final_product_rec_model.json    # XGBoost product recommender
-│   ├── final_product_rec_bundle.joblib    # XGBoost product recommender
+│   ├── final_product_rec_bundle.joblib    # XGBoost product bundle
 ├── notebooks/                      # Training notebooks for all three models
 └── raw images/                     # Face images for the 4 registered users
 ```
